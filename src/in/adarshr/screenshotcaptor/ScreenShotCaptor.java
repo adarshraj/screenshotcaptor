@@ -22,6 +22,8 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Properties;
@@ -136,9 +138,9 @@ public class ScreenShotCaptor extends JFrame implements ActionListener, KeyListe
 			Robot robot = new Robot();
 			BufferedImage bufferedImage = robot.createScreenCapture(rectangle);
 
-			String location = properties.getProperty("Location");
-			String format = properties.getProperty("Format");
-			String prefix = properties.getProperty("Prefix");
+			String location = getLocation(properties.getProperty("Location"));
+			String format = properties.getProperty("Format", "png");
+			String prefix = getPrefix(properties.getProperty("Prefix"));
 			String fileTime = properties.getProperty("TimeFormat", "yyyyMMdd_hhmmssSSS_a");
 			
 			formatter = new SimpleDateFormat(fileTime);
@@ -152,7 +154,19 @@ public class ScreenShotCaptor extends JFrame implements ActionListener, KeyListe
 			
 		}
 	}
-
+	
+	private String getPrefix(String prefix) {
+		return prefix == null ? "IMG_":prefix;
+	}
+	
+	private String getLocation(String location) {
+		if(location == null) {
+			Path currentRelativePath = Paths.get("");
+			return currentRelativePath.toAbsolutePath().toString()+"\\";
+		}
+		return location;
+	}
+	
 	@Override
 	public void keyTyped(KeyEvent e) {
 	}
