@@ -49,7 +49,7 @@ public class ScreenShotCaptor extends JFrame implements ActionListener, KeyListe
 	
 	public ScreenShotCaptor() {
 		properties = new Properties();
-		try(InputStream inputStream = new  FileInputStream("ScreenShotCapture.properties")) {			
+		try(InputStream inputStream = new  FileInputStream("ScreenShotCaptor.properties")) {			
 			properties.load(inputStream);
 			defaultFileNameText = properties.getProperty("TextFieldDefaultString");
 			UIManager.setLookAndFeel(properties.getProperty("LookAndFeel"));
