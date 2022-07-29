@@ -19,7 +19,6 @@ import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
@@ -40,14 +39,11 @@ import javax.swing.UnsupportedLookAndFeelException;
  *
  */
 public class ScreenShotCaptor extends JFrame implements ActionListener, KeyListener{
-
 	private static final long serialVersionUID = 516957436464978811L;
-	private SimpleDateFormat formatter;
 	private JButton picButton;
 	private JTextField fileNameText;
 	private String defaultFileNameText;
 	Properties properties;
-	
 	
 	public ScreenShotCaptor() {
 		properties = new Properties();
@@ -56,13 +52,9 @@ public class ScreenShotCaptor extends JFrame implements ActionListener, KeyListe
 			defaultFileNameText = properties.getProperty("TextFieldDefaultString");
 			UIManager.setLookAndFeel(properties.getProperty("LookAndFeel"));
 		} catch (ClassNotFoundException | InstantiationException | IllegalAccessException
-				| UnsupportedLookAndFeelException e) {
+				| UnsupportedLookAndFeelException | IOException e) {
 			e.printStackTrace();
-		} catch (FileNotFoundException e1) {
-			e1.printStackTrace();
-		} catch (IOException e1) {
-			e1.printStackTrace();
-		}
+		} 
 	
 		this.getContentPane().setLayout(new FlowLayout());
 		this.setVisible(Boolean.TRUE);
@@ -126,6 +118,7 @@ public class ScreenShotCaptor extends JFrame implements ActionListener, KeyListe
 	
 	public void doCapture(){
 		String fileName = null;
+		SimpleDateFormat formatter;
 		if(fileNameText.getText() != null && !defaultFileNameText.equalsIgnoreCase(fileNameText.getText())) {
 			fileName = fileNameText.getText();
 		}
@@ -150,15 +143,25 @@ public class ScreenShotCaptor extends JFrame implements ActionListener, KeyListe
 			ImageIO.write(bufferedImage, format, file);
 		} catch (AWTException | IOException e) {
 			e.printStackTrace();
-		}finally {
-			
 		}
 	}
 	
+	/**
+	 * File name prefix
+	 * 
+	 * @param prefix
+	 * @return
+	 */
 	private String getPrefix(String prefix) {
 		return prefix == null ? "IMG_":prefix;
 	}
 	
+	/**
+	 * File name location
+	 * 
+	 * @param location
+	 * @return
+	 */
 	private String getLocation(String location) {
 		if(location == null) {
 			Path currentRelativePath = Paths.get("");
@@ -169,6 +172,7 @@ public class ScreenShotCaptor extends JFrame implements ActionListener, KeyListe
 	
 	@Override
 	public void keyTyped(KeyEvent e) {
+		//NOSONAR
 	}
 
 	@Override
@@ -180,6 +184,6 @@ public class ScreenShotCaptor extends JFrame implements ActionListener, KeyListe
 
 	@Override
 	public void keyReleased(KeyEvent e) {
+		//NOSONAR
 	}
-
 }
