@@ -1,6 +1,5 @@
 /bin/
 /.classpath
-/.gitignore
 /.project
 /target/
 /.idea/jarRepositories.xml
@@ -8,3 +7,8 @@
 /.idea/misc.xml
 /.idea/vcs.xml
 /.idea/.gitignore
+
+# Default screenshot outputs (when no Location is configured)
+IMG_*.png
+IMG_*.jpg
+IMG_*.jpeg
