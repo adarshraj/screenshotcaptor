@@ -60,6 +60,14 @@ The file is created on first append if it doesn't exist. Word, LibreOffice, and 
 
 If the RTF file is open in Word when a capture fires (Windows holds an exclusive lock), the append fails and the app shows a warning dialog. The disk image is still saved if that option is on, so nothing is lost — close Word and the next capture will succeed.
 
+### Importing existing screenshots
+
+The **Add image to RTF...** button (inside the *Save to* group, enabled once you've picked an RTF target via Browse) opens a multi-select file picker filtered to image files. Each chosen image is appended to the RTF document with the same caption format as live captures: the filename (without extension) on one line, and the file's last-modified time formatted as a 24-hour timestamp on the next.
+
+This is useful when you can't use live screen capture — for example, on a macOS machine where you don't have admin rights to grant Screen Recording permission. You can still take screenshots with the built-in OS shortcut (Cmd+Shift+4 on macOS, PrtSc on Linux/Windows), then bring them into the help doc through this button. The picker remembers the last directory you imported from, so after navigating to your custom screenshot folder once, subsequent imports start there.
+
+A summary dialog appears at the end showing how many images were appended and which ones (if any) failed.
+
 ## Configuration
 
 All tunable behavior lives in `src/in/adarshr/screenshotcaptor/ScreenShotCaptor.properties`. The file is bundled onto the classpath at build time.

@@ -79,8 +79,10 @@ public class ScreenShotCaptor extends JFrame implements ActionListener {
 	private final JCheckBox saveImageCheck;
 	private final JCheckBox saveRtfCheck;
 	private final JButton browseButton;
+	private final JButton importButton;
 	private final JLabel rtfPathLabel;
 	private File rtfTarget;
+	private File lastImportDir;
 	private String defaultFileNameText = "File Name";
 	Properties properties;
 
@@ -149,6 +151,10 @@ public class ScreenShotCaptor extends JFrame implements ActionListener {
 		browseButton.setToolTipText("Pick the RTF document to append to");
 		browseButton.addActionListener(e -> chooseRtfTarget());
 
+		importButton = new JButton("Add image to RTF...");
+		importButton.setFocusPainted(false);
+		importButton.addActionListener(e -> importImagesToRtf());
+
 		rtfPathLabel = new JLabel("no RTF file selected");
 		rtfPathLabel.setForeground(new Color(110, 110, 110));
 		rtfPathLabel.setFont(rtfPathLabel.getFont().deriveFont(Font.ITALIC, 11f));
@@ -205,6 +211,11 @@ public class ScreenShotCaptor extends JFrame implements ActionListener {
 		browseRow.add(browseButton);
 		browseRow.add(rtfPathLabel);
 		outputPanel.add(browseRow);
+
+		JPanel importRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+		importRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+		importRow.add(importButton);
+		outputPanel.add(importRow);
 
 		root.add(outputPanel);
 
@@ -265,6 +276,11 @@ public class ScreenShotCaptor extends JFrame implements ActionListener {
 		boolean any = saveImageCheck.isSelected() || saveRtfCheck.isSelected();
 		picButton.setEnabled(any);
 		picButton.setToolTipText(any ? null : "Enable at least one output");
+		boolean rtfReady = rtfTarget != null;
+		importButton.setEnabled(rtfReady);
+		importButton.setToolTipText(rtfReady
+				? "Append existing image files to the RTF document"
+				: "Pick an RTF document first via Browse");
 	}
 
 	private boolean chooseRtfTarget() {
@@ -285,7 +301,68 @@ public class ScreenShotCaptor extends JFrame implements ActionListener {
 		rtfTarget = chosen;
 		rtfPathLabel.setText(rtfTarget.getName());
 		rtfPathLabel.setToolTipText(rtfTarget.getAbsolutePath());
+		updateCaptureEnabled();
 		return true;
+	}
+
+	private void importImagesToRtf() {
+		if (rtfTarget == null) {
+			return;
+		}
+		JFileChooser chooser = new JFileChooser();
+		chooser.setDialogTitle("Add images to " + rtfTarget.getName());
+		chooser.setMultiSelectionEnabled(true);
+		chooser.setFileFilter(new FileNameExtensionFilter(
+				"Image files (*.png, *.jpg, *.jpeg, *.gif, *.bmp)",
+				"png", "jpg", "jpeg", "gif", "bmp"));
+		if (lastImportDir != null && lastImportDir.isDirectory()) {
+			chooser.setCurrentDirectory(lastImportDir);
+		}
+		if (chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) {
+			return;
+		}
+		File[] files = chooser.getSelectedFiles();
+		if (files == null || files.length == 0) {
+			return;
+		}
+		lastImportDir = chooser.getCurrentDirectory();
+
+		int ok = 0;
+		java.util.List<String> failures = new java.util.ArrayList<>();
+		SimpleDateFormat fmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+		for (File file : files) {
+			try {
+				BufferedImage img = ImageIO.read(file);
+				if (img == null) {
+					failures.add(file.getName() + ": unsupported or unreadable image");
+					continue;
+				}
+				String baseName = stripExtension(file.getName());
+				String readableTime = fmt.format(new java.util.Date(file.lastModified()));
+				RtfAppender.append(rtfTarget, img, baseName, readableTime);
+				ok++;
+			} catch (IOException ex) {
+				failures.add(file.getName() + ": " + ex.getMessage());
+			}
+		}
+
+		StringBuilder summary = new StringBuilder();
+		summary.append(ok).append(ok == 1 ? " image appended to " : " images appended to ");
+		summary.append(rtfTarget.getName()).append('.');
+		if (!failures.isEmpty()) {
+			summary.append("\n\n").append(failures.size()).append(" failed:");
+			for (String f : failures) {
+				summary.append("\n  \u2022 ").append(f);
+			}
+		}
+		JOptionPane.showMessageDialog(this, summary.toString(),
+				"Import complete",
+				failures.isEmpty() ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.WARNING_MESSAGE);
+	}
+
+	private static String stripExtension(String name) {
+		int dot = name.lastIndexOf('.');
+		return dot > 0 ? name.substring(0, dot) : name;
 	}
 
 	private Rectangle virtualScreenBounds() {
