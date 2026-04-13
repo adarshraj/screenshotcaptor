@@ -58,6 +58,7 @@ import javax.swing.JRadioButton;
 import javax.swing.JTextField;
 import javax.swing.JWindow;
 import javax.swing.KeyStroke;
+import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
@@ -83,6 +84,8 @@ public class ScreenShotCaptor extends JFrame implements ActionListener {
 	private final JLabel rtfPathLabel;
 	private File rtfTarget;
 	private File lastImportDir;
+	/** After capture, restore the filename field when a custom base name was used; otherwise clear it. */
+	private String pendingFileNameAfterCapture;
 	private String defaultFileNameText = "File Name";
 	Properties properties;
 
@@ -256,7 +259,7 @@ public class ScreenShotCaptor extends JFrame implements ActionListener {
 	}
 
 	public static void main(String[] args) {
-		new ScreenShotCaptor();
+		SwingUtilities.invokeLater(ScreenShotCaptor::new);
 	}
 
 	public void actionPerformed(ActionEvent e) {
@@ -295,8 +298,14 @@ public class ScreenShotCaptor extends JFrame implements ActionListener {
 			return false;
 		}
 		File chosen = chooser.getSelectedFile();
-		if (chosen != null && !chosen.getName().toLowerCase().endsWith(".rtf")) {
-			chosen = new File(chosen.getParentFile(), chosen.getName() + ".rtf");
+		if (chosen == null) {
+			return false;
+		}
+		if (!chosen.getName().toLowerCase().endsWith(".rtf")) {
+			File parent = chosen.getParentFile();
+			chosen = parent != null
+					? new File(parent, chosen.getName() + ".rtf")
+					: new File(chosen.getName() + ".rtf");
 		}
 		rtfTarget = chosen;
 		rtfPathLabel.setText(rtfTarget.getName());
@@ -374,42 +383,56 @@ public class ScreenShotCaptor extends JFrame implements ActionListener {
 	}
 
 	private void doFullScreenCapture() {
+		pendingFileNameAfterCapture = null;
 		this.setVisible(false);
 		Timer t = new Timer(150, ev -> {
-			captureRect(virtualScreenBounds());
-			afterCapture();
+			try {
+				captureRect(virtualScreenBounds());
+			} finally {
+				afterCapture();
+			}
 		});
 		t.setRepeats(false);
 		t.start();
 	}
 
 	private void doRegionCapture() {
+		pendingFileNameAfterCapture = null;
 		this.setVisible(false);
 		Rectangle vBounds = virtualScreenBounds();
 		RegionSelector.show(vBounds, selected -> {
-			if (selected != null && selected.width > 0 && selected.height > 0) {
-				Rectangle screenRect = new Rectangle(
-						vBounds.x + selected.x,
-						vBounds.y + selected.y,
-						selected.width,
-						selected.height);
-				captureRect(screenRect);
+			try {
+				if (selected != null && selected.width > 0 && selected.height > 0) {
+					Rectangle screenRect = new Rectangle(
+							vBounds.x + selected.x,
+							vBounds.y + selected.y,
+							selected.width,
+							selected.height);
+					captureRect(screenRect);
+				}
+			} finally {
+				afterCapture();
 			}
-			afterCapture();
 		});
 	}
 
 	private void afterCapture() {
 		this.setVisible(true);
-		fileNameText.setText("");
+		if (pendingFileNameAfterCapture != null) {
+			fileNameText.setText(pendingFileNameAfterCapture);
+			pendingFileNameAfterCapture = null;
+		} else {
+			fileNameText.setText("");
+		}
 	}
 
 	private void captureRect(Rectangle rect) {
-		try {
-			String typed = fileNameText.getText();
-			String customName = (typed != null && typed.length() > 0
-					&& !defaultFileNameText.equalsIgnoreCase(typed)) ? typed : null;
+		String typed = fileNameText.getText();
+		String customName = (typed != null && typed.length() > 0
+				&& !defaultFileNameText.equalsIgnoreCase(typed)) ? typed : null;
+		pendingFileNameAfterCapture = customName != null ? typed : null;
 
+		try {
 			BufferedImage bufferedImage = new Robot().createScreenCapture(rect);
 
 			String format = properties.getProperty("Format", "png");
@@ -437,8 +460,16 @@ public class ScreenShotCaptor extends JFrame implements ActionListener {
 							"RTF write failed", JOptionPane.WARNING_MESSAGE);
 				}
 			}
-		} catch (AWTException | IOException e) {
+		} catch (AWTException e) {
 			e.printStackTrace();
+			JOptionPane.showMessageDialog(this,
+					"Screen capture failed (AWT).\n" + e.getMessage(),
+					"Capture failed", JOptionPane.ERROR_MESSAGE);
+		} catch (IOException e) {
+			e.printStackTrace();
+			JOptionPane.showMessageDialog(this,
+					"Could not save the screenshot.\n" + e.getMessage(),
+					"Save failed", JOptionPane.ERROR_MESSAGE);
 		}
 	}
 
@@ -458,7 +489,11 @@ public class ScreenShotCaptor extends JFrame implements ActionListener {
 		if (location == null || location.isEmpty()) {
 			return Paths.get("").toAbsolutePath().toString() + File.separator;
 		}
-		return location;
+		String loc = location.replace('/', File.separatorChar).replace('\\', File.separatorChar);
+		if (!loc.endsWith(File.separator)) {
+			loc = loc + File.separator;
+		}
+		return loc;
 	}
 
 	/**
